@@ -1,0 +1,85 @@
+from flask import Flask, render_template, request, send_file
+import os
+import uuid
+from steg_utils import image_stego, audio_stego, video_stego, crypto_utils
+
+UPLOAD_FOLDER = 'uploads'
+OUTPUT_FOLDER = 'output'
+
+app = Flask(__name__)
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+app.config['OUTPUT_FOLDER'] = OUTPUT_FOLDER
+
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+os.makedirs(OUTPUT_FOLDER, exist_ok=True)
+
+@app.route('/')
+def index():
+    return render_template('index.html')
+
+@app.route('/', methods=['POST'])
+def handle_form():
+    mode = request.form.get('mode')
+    encryption_method = request.form.get('encryption')
+    data_type = request.form.get('data_type')
+    carrier_file = request.files.get('carrier')
+    password = request.form.get('password') or request.form.get('decryption_key')
+
+    # Save carrier file
+    carrier_filename = str(uuid.uuid4()) + "_" + carrier_file.filename
+    carrier_path = os.path.join(app.config['UPLOAD_FOLDER'], carrier_filename)
+    carrier_file.save(carrier_path)
+
+    # Determine file type
+    file_ext = carrier_file.filename.split('.')[-1].lower()
+    if file_ext in ['png', 'jpg', 'jpeg']:
+        module = image_stego
+    elif file_ext in ['wav', 'mp3']:
+        module = audio_stego
+    elif file_ext in ['mp4', 'avi']:
+        module = video_stego
+    else:
+        return "Unsupported file type", 400
+
+    # ENCRYPT MODE
+    if mode == 'encrypt':
+        if data_type == 'text':
+            payload = request.form.get('text_payload').encode()
+        elif data_type == 'file':
+            file_payload = request.files.get('file_payload')
+            payload = file_payload.read()
+        else:
+            return "Invalid payload type", 400
+
+        # Encrypt the payload
+        if encryption_method == 'password':
+            encrypted_data = crypto_utils.encrypt_with_password(payload, password)
+            key_info = f"Password: {password}"
+        else:
+            encrypted_data, rand_key = crypto_utils.encrypt_with_random_key(payload)
+            key_info = f"Random Key: {rand_key}"
+
+        # Hide data in file
+        output_file = module.hide_data(carrier_path, encrypted_data)
+
+        return send_file(output_file, as_attachment=True, download_name='steg_encoded.' + file_ext)
+
+    # DECRYPT MODE
+    elif mode == 'decrypt':
+        extracted_data = module.extract_data(carrier_path)
+
+        if not extracted_data:
+            return "No data found", 400
+
+        decrypted = crypto_utils.decrypt(extracted_data, password)
+        output_file = os.path.join(app.config['OUTPUT_FOLDER'], f"decoded_output.txt")
+        with open(output_file, 'wb') as f:
+            f.write(decrypted)
+
+        return send_file(output_file, as_attachment=True, download_name="decrypted_output.txt")
+
+    else:
+        return "Invalid mode", 400
+
+if __name__ == '__main__':
+    app.run(debug=True)

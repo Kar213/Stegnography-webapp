@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>StegSecure – Cyber Steganography Tool</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <script src="https://unpkg.com/filepond/dist/filepond.min.js"></script>
+  <link href="https://unpkg.com/filepond/dist/filepond.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron&display=swap" rel="stylesheet">
+</head>
+<body class="cyber-body">
+
+  <div class="cyber-container">
+    <h1 class="cyber-title">🛡️ StegSecure - Cyber Steganography Tool</h1>
+
+    <div class="btn-group">
+      <button onclick="switchMode('encrypt')" class="btn btn-neon">Encrypt</button>
+      <button onclick="switchMode('decrypt')" class="btn btn-neon-green">Decrypt</button>
+    </div>
+
+    <form id="mainForm" method="POST" enctype="multipart/form-data" class="cyber-form">
+      <input type="hidden" id="mode" name="mode" value="encrypt"/>
+
+      <label>Select Image/Audio/Video File</label>
+      <input type="file" name="carrier" id="carrierFile" class="filepond" required>
+
+      <div id="payloadSection">
+        <label>Data to Hide</label>
+        <select name="data_type" id="dataType">
+          <option value="text">Text</option>
+          <option value="file">File</option>
+        </select>
+        <textarea name="text_payload" id="textPayload" placeholder="Enter your secret message here..."></textarea>
+        <input type="file" name="file_payload" id="filePayload" class="filepond hidden"/>
+      </div>
+
+      <div id="encryptionOptions">
+        <label>Encryption Method</label>
+        <select name="encryption" id="encryptionMethod">
+          <option value="password">Password</option>
+          <option value="random">Random Key</option>
+        </select>
+        <input type="text" name="password" id="passwordInput" placeholder="Enter password" />
+      </div>
+
+      <div id="keyInputSection" class="hidden">
+        <label>Enter Password or Key</label>
+        <input type="text" name="decryption_key" id="decryptionKey" placeholder="Enter key"/>
+      </div>
+
+      <div class="text-center">
+        <button type="submit" class="btn btn-glow">Submit</button>
+      </div>
+    </form>
+  </div>
+
+  <script src="{{ url_for('static', filename='js/scripts.js') }}"></script>
+<script>
+  function switchMode(mode) {
+    document.getElementById('mode').value = mode;
+
+    const isEncrypt = mode === 'encrypt';
+    document.getElementById('payloadSection').style.display = isEncrypt ? 'block' : 'none';
+    document.getElementById('encryptionOptions').style.display = isEncrypt ? 'block' : 'none';
+    document.getElementById('keyInputSection').style.display = isEncrypt ? 'none' : 'block';
+  }
+
+  // Toggle file input/text area based on payload type
+  document.getElementById('dataType').addEventListener('change', function () {
+    if (this.value === 'file') {
+      document.getElementById('filePayload').classList.remove('hidden');
+      document.getElementById('textPayload').style.display = 'none';
+    } else {
+      document.getElementById('filePayload').classList.add('hidden');
+      document.getElementById('textPayload').style.display = 'block';
+    }
+  });
+
+  // Handle form submission to show key after encrypting
+  document.getElementById('mainForm').addEventListener('submit', async function (e) {
+    const mode = document.getElementById('mode').value;
+    const encMethod = document.getElementById('encryptionMethod').value;
+
+    if (mode === 'encrypt' && encMethod === 'random') {
+      alert("Reminder: You’ll receive a key after upload. Save it to decrypt later.");
+    }
+  });
+
+  // Set default UI
+  switchMode('encrypt');
+</script>
+
+</body>
+</html>
